@@ -1,0 +1,644 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+  <title>Parchment Schematic: Mission Designer — Build, Launch &amp; Operate a Space Mission with NASA Data</title>
+  <meta name="description" content="Design a rocket and satellite pixel by pixel, launch it with the rocket equation, and operate it against real NASA EONET events, GIBS imagery and DONKI space weather." />
+
+  <!-- Fully offline: compiled Tailwind utilities + embedded fonts (IBM Plex Mono & Space Grotesk, SIL Open Font License) -->
+  <link rel="stylesheet" href="css/fonts.css" />
+  <link rel="stylesheet" href="css/tailwind.css" />
+  <link rel="stylesheet" href="css/styles.css" />
+</head>
+<body class="min-h-screen flex flex-col lg:h-screen lg:overflow-hidden">
+
+  <!-- ==================== TOP ENGINEERING HEADER BAR ==================== -->
+  <header class="bg-[#ebe0c7] border-b-2 border-[#2b241b] px-3 py-2 flex flex-wrap items-center justify-between gap-2 z-30">
+    <!-- Brand & Schematic Sheet ID -->
+    <div class="flex items-center gap-2.5">
+      <div class="w-9 h-9 rounded bg-[#2b241b] text-[#f3ead6] flex items-center justify-center shrink-0 draft-shadow-sm">
+        <!-- Custom Inline SVG Engineering Compass + Rocket Icon -->
+        <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M12 2L8 10h8L12 2z" fill="#b83a2d" stroke="currentColor"/>
+          <rect x="9" y="10" width="6" height="8" rx="1"/>
+          <path d="M9 15l-3 4h3M15 15l3 4h-3"/>
+          <line x1="12" y1="18" x2="12" y2="22" stroke="#e0954f"/>
+        </svg>
+      </div>
+      <div>
+        <div class="flex items-center gap-2">
+          <h1 class="text-sm sm:text-base font-bold tracking-tight uppercase leading-none text-[#2b241b]">
+            Parchment Schematic
+          </h1>
+          <span class="hidden sm:inline-block font-mono-tech text-[10px] font-semibold px-1.5 py-0.5 rounded bg-[#e4d6b9] border border-[#2b241b]">
+            MISSION REV 6.0
+          </span>
+        </div>
+        <p class="font-mono-tech text-[11px] text-[#635645] leading-tight mt-0.5">
+          Full-Mission Design Lab • Powered by NASA EONET · GIBS · DONKI
+        </p>
+      </div>
+    </div>
+
+    <!-- Mission Phase Stepper: Brief → Design → Flight Test → Launch & Orbit → Operations → Review -->
+    <nav id="phase-stepper" class="phase-stepper" aria-label="Mission phases">
+      <button type="button" data-phase="brief" class="phase-btn active"><span class="phase-num">1</span>Brief</button>
+      <button type="button" id="btn-mode-build" data-phase="design" class="phase-btn"><span class="phase-num">2</span>Design</button>
+      <button type="button" id="btn-mode-sim" data-phase="flight" class="phase-btn"><span class="phase-num">3</span>Flight Test</button>
+      <button type="button" data-phase="launch" class="phase-btn"><span class="phase-num">4</span>Launch &amp; Orbit</button>
+      <button type="button" data-phase="ops" class="phase-btn"><span class="phase-num">5</span>Operations</button>
+      <button type="button" data-phase="review" class="phase-btn"><span class="phase-num">6</span>Review</button>
+    </nav>
+
+    <!-- Right Blueprint Actions: Resolution, Refuel, Preset, Clear, Import/Export -->
+    <div class="flex flex-wrap items-center gap-1.5">
+      <div class="flex items-center gap-1 bg-[#f3ead6] px-2 py-1 rounded border-[1.5px] border-[#2b241b]">
+        <label for="select-grid-size" class="font-mono-tech text-[11px] font-semibold text-[#635645]">GRID:</label>
+        <select id="select-grid-size" class="font-mono-tech text-xs font-bold bg-transparent focus:outline-none cursor-pointer">
+          <option value="32x48" selected>32 × 48 px</option>
+          <option value="48x64">48 × 64 px</option>
+          <option value="64x64">64 × 64 px</option>
+        </select>
+      </div>
+
+      <button id="btn-refuel-top" class="draft-btn-emerald px-2.5 py-1 rounded text-xs font-mono-tech font-bold" title="Refuel Liquid & Solid Propellant Tanks to 100%">
+        <span data-ico="fuel"></span> Refuel Tanks
+      </button>
+      <select id="select-preset" class="draft-btn px-2 py-1 rounded text-xs font-semibold cursor-pointer w-[118px]" title="Load a preset craft">
+        <option value="">Preset…</option>
+        <option value="bantay">BANTAY-1 (mission-ready)</option>
+        <option value="mk1">MK-I Shuttle (tutorial: unstable!)</option>
+      </select>
+      <button id="btn-clear-canvas" class="draft-btn px-2.5 py-1 rounded text-xs font-semibold text-[#b83a2d]" title="Clear All Pixels">
+        Clear
+      </button>
+
+      <div class="h-5 w-[1.5px] bg-[#c9b99a] mx-0.5 hidden sm:block"></div>
+
+      <button id="btn-export-json" class="draft-btn px-2 py-1 rounded text-xs font-mono-tech font-semibold" title="Export Schematic JSON">
+        JSON
+      </button>
+      <button id="btn-export-png" class="draft-btn px-2 py-1 rounded text-xs font-mono-tech font-semibold" title="Export Transparent PNG Sprite">
+        PNG
+      </button>
+      <button id="btn-sources" class="draft-btn px-2 py-1 rounded text-xs font-mono-tech font-semibold" title="NASA data sources">NASA Data</button>
+      <button id="btn-help" class="draft-btn-primary px-2 py-1 rounded text-xs font-mono-tech font-bold" title="How to play">? Help</button>
+      <label class="draft-btn px-2 py-1 rounded text-xs font-mono-tech font-semibold cursor-pointer" title="Import JSON Blueprint or PNG Pixel Image">
+        Import
+        <input id="input-import-file" type="file" accept=".json,image/png,image/webp,image/gif" class="hidden" />
+      </label>
+    </div>
+  </header>
+
+  <!-- ==================== MOBILE PANEL SWITCHER (VISIBLE < LG) ==================== -->
+  <div class="lg:hidden flex border-b-[1.5px] border-[#2b241b] bg-[#e4d6b9] text-xs font-bold z-20">
+    <button data-mobile-tab="canvas" class="mobile-tab-btn flex-1 py-2 text-center bg-[#2b241b] text-[#f3ead6]">
+      Blueprint Viewport
+    </button>
+    <button data-mobile-tab="tools" class="mobile-tab-btn flex-1 py-2 text-center border-l border-[#2b241b]">
+      Tools &amp; Stamps
+    </button>
+    <button data-mobile-tab="materials" class="mobile-tab-btn flex-1 py-2 text-center border-l border-[#2b241b]">
+      Materials &amp; Fuel
+    </button>
+  </div>
+
+  <!-- ==================== MAIN WORKBENCH AREA ==================== -->
+  <main class="flex-1 flex flex-col lg:flex-row overflow-hidden relative">
+
+    <!-- ==================== LEFT DOCK: TOOLS, SYMMETRY, STAMPS ==================== -->
+    <aside id="panel-tools" class="w-full lg:w-72 bg-[#ebe0c7] border-b-2 lg:border-b-0 lg:border-r-2 border-[#2b241b] p-3 overflow-y-auto flex flex-col gap-3 shrink-0">
+
+      <!-- Section 1: Multi-Pixel Drafting Tools -->
+      <section class="bg-[#f3ead6] rounded-md p-2.5 draft-border draft-shadow-sm">
+        <div class="flex items-center justify-between mb-2">
+          <h2 class="text-xs font-bold uppercase tracking-wider flex items-center gap-1.5">
+            <span class="w-2 h-2 rounded-full bg-[#2b241b]"></span>
+            Drafting Tools
+          </h2>
+          <div class="flex items-center gap-1">
+            <button id="btn-undo" class="draft-btn px-2 py-0.5 rounded text-xs font-mono-tech font-bold" title="Undo (Ctrl+Z)">↶</button>
+            <button id="btn-redo" class="draft-btn px-2 py-0.5 rounded text-xs font-mono-tech font-bold" title="Redo (Ctrl+Y)">↷</button>
+          </div>
+        </div>
+
+        <div class="grid grid-cols-4 gap-1" id="tool-grid">
+          <button data-tool="brush" class="tool-btn draft-btn active py-1.5 px-1 rounded flex flex-col items-center justify-center gap-0.5 text-[10px] font-semibold" title="Pixel Brush (B)">
+            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <path d="M17 3a2.85 2.83 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5Z"/>
+            </svg>
+            <span>Brush [B]</span>
+          </button>
+
+          <button data-tool="line" class="tool-btn draft-btn py-1.5 px-1 rounded flex flex-col items-center justify-center gap-0.5 text-[10px] font-semibold" title="Line Tool (L)">
+            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <line x1="5" y1="19" x2="19" y2="5"/>
+              <circle cx="5" cy="19" r="2" fill="currentColor"/>
+              <circle cx="19" cy="5" r="2" fill="currentColor"/>
+            </svg>
+            <span>Line [L]</span>
+          </button>
+
+          <button data-tool="box" class="tool-btn draft-btn py-1.5 px-1 rounded flex flex-col items-center justify-center gap-0.5 text-[10px] font-semibold" title="Filled Box (R)">
+            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <rect x="4" y="4" width="16" height="16" rx="1" fill="currentColor" fill-opacity="0.25"/>
+            </svg>
+            <span>Box [R]</span>
+          </button>
+
+          <button data-tool="fill" class="tool-btn draft-btn py-1.5 px-1 rounded flex flex-col items-center justify-center gap-0.5 text-[10px] font-semibold" title="Flood Fill (G)">
+            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <path d="m19 11-8-8-8.6 8.6a2 2 0 0 0 0 2.8l5.2 5.2c.8.8 2 .8 2.8 0L19 11Z"/>
+              <path d="M20 14c1.1 1.3 2 2.5 2 3.5a2 2 0 0 1-4 0c0-1 .9-2.2 2-3.5Z" fill="currentColor"/>
+            </svg>
+            <span>Fill [G]</span>
+          </button>
+
+          <button data-tool="eraser" class="tool-btn draft-btn py-1.5 px-1 rounded flex flex-col items-center justify-center gap-0.5 text-[10px] font-semibold" title="Eraser (E)">
+            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <path d="m7 21-4.3-4.3c-1-1-1-2.5 0-3.4l9.6-9.6c1-1 2.5-1 3.4 0l5.6 5.6c1 1 1 2.5 0 3.4L13 21"/>
+              <path d="M22 21H7"/>
+            </svg>
+            <span>Erase [E]</span>
+          </button>
+
+          <button data-tool="picker" class="tool-btn draft-btn py-1.5 px-1 rounded flex flex-col items-center justify-center gap-0.5 text-[10px] font-semibold" title="Eyedropper (I)">
+            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <path d="m2 22 1-1h3l9-9"/>
+              <path d="m15 6 3.4-3.4a2.1 2.1 0 1 1 3 3L18 9"/>
+            </svg>
+            <span>Pick [I]</span>
+          </button>
+
+          <button data-tool="pan" class="tool-btn draft-btn py-1.5 px-1 rounded flex flex-col items-center justify-center gap-0.5 text-[10px] font-semibold col-span-2" title="Pan Canvas (H or Space+Drag)">
+            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <path d="M18 11V6a2 2 0 0 0-2-2v0a2 2 0 0 0-2 2v0"/>
+              <path d="M14 10V4a2 2 0 0 0-2-2v0a2 2 0 0 0-2 2v2"/>
+              <path d="M10 10.5V6a2 2 0 0 0-2-2v0a2 2 0 0 0-2 2v8"/>
+              <path d="M18 8a2 2 0 1 1 4 0v6a8 8 0 0 1-8 8h-2c-2.8 0-4.5-.86-5.99-2.34l-3.6-3.6a2 2 0 0 1 2.83-2.82L7 15"/>
+            </svg>
+            <span>Pan Hand [H]</span>
+          </button>
+        </div>
+
+        <!-- Brush Size Selector -->
+        <div class="mt-2 pt-2 border-t border-[#c9b99a] flex items-center justify-between">
+          <span class="font-mono-tech text-[11px] font-semibold text-[#635645]">BRUSH SIZE:</span>
+          <div class="flex gap-1" id="brush-size-group">
+            <button data-size="1" class="size-btn draft-btn active px-2 py-0.5 rounded font-mono-tech text-xs font-bold">1×1</button>
+            <button data-size="2" class="size-btn draft-btn px-2 py-0.5 rounded font-mono-tech text-xs font-bold">2×2</button>
+            <button data-size="3" class="size-btn draft-btn px-2 py-0.5 rounded font-mono-tech text-xs font-bold">3×3</button>
+          </div>
+        </div>
+
+        <!-- Mirror Symmetry Toggle -->
+        <div class="mt-2 pt-2 border-t border-[#c9b99a] flex items-center justify-between">
+          <div>
+            <span class="text-xs font-bold block leading-tight">Mirror X Symmetry [M]</span>
+            <span class="font-mono-tech text-[10px] text-[#635645]">Reflect across centerline</span>
+          </div>
+          <button id="btn-toggle-mirror" class="draft-btn px-2.5 py-1 rounded font-mono-tech text-xs font-bold">
+            OFF
+          </button>
+        </div>
+      </section>
+
+      <!-- Section 2: Multi-Pixel Part Stamps -->
+      <section class="bg-[#f3ead6] rounded-md p-2.5 draft-border draft-shadow-sm">
+        <div class="flex items-center justify-between mb-1.5">
+          <h2 class="text-xs font-bold uppercase tracking-wider flex items-center gap-1.5">
+            <span class="w-2 h-2 rounded-full bg-[#255c85]"></span>
+            Part Stamps
+          </h2>
+          <span class="font-mono-tech text-[10px] text-[#635645]">STAMP &amp; EDIT</span>
+        </div>
+        <p class="text-[11px] text-[#635645] mb-2 leading-snug">
+          Stamp rocket parts, decouplers and whole satellites, then refine pixel-by-pixel.
+        </p>
+
+        <div id="stamps-list" class="grid grid-cols-1 gap-1.5">
+          <!-- Populated dynamically via JS with crisp mini pixel previews -->
+        </div>
+      </section>
+
+      <!-- Section 3: Canvas Zoom & Navigation -->
+      <section class="bg-[#f3ead6] rounded-md p-2.5 draft-border draft-shadow-sm">
+        <div class="flex items-center justify-between mb-1.5">
+          <h2 class="text-xs font-bold uppercase tracking-wider">Blueprint Zoom</h2>
+          <span id="zoom-readout" class="font-mono-tech text-xs font-bold px-1.5 py-0.5 rounded bg-[#e4d6b9] border border-[#2b241b]">12x</span>
+        </div>
+        <div class="flex items-center gap-1.5">
+          <button id="btn-zoom-out" class="draft-btn w-8 h-8 rounded font-mono-tech font-bold text-sm">−</button>
+          <input id="slider-zoom" type="range" min="4" max="24" step="1" value="12" class="flex-1" />
+          <button id="btn-zoom-in" class="draft-btn w-8 h-8 rounded font-mono-tech font-bold text-sm">+</button>
+          <button id="btn-zoom-fit" class="draft-btn px-2 h-8 rounded font-mono-tech text-[11px] font-bold" title="Center & Fit Grid">FIT</button>
+        </div>
+        <p class="font-mono-tech text-[10px] text-[#635645] mt-1.5">
+          Scroll to zoom • Middle/Right-drag or Space+drag to pan
+        </p>
+      </section>
+    </aside>
+
+    <!-- ==================== CENTER VIEWPORT: BUILD CANVAS, FLIGHT SIM & MINIMIZABLE FBD TAB ==================== -->
+    <section id="panel-canvas" class="flex-1 flex flex-col min-h-[460px] lg:min-h-0 relative bg-[#f3ead6]">
+
+      <!-- Top Floating Overlay Strip inside Viewport -->
+      <div class="absolute top-2.5 left-2.5 right-2.5 z-10 flex flex-wrap items-center justify-between gap-2 pointer-events-none">
+        <!-- Craft Name Plate -->
+        <div class="pointer-events-auto bg-[#f3ead6]/95 px-2.5 py-1 rounded draft-border draft-shadow-sm flex items-center gap-2">
+          <span class="font-mono-tech text-[10px] font-bold uppercase text-[#635645]">CRAFT:</span>
+          <input id="input-craft-name" type="text" value="BANTAY-1" maxlength="28"
+            class="font-mono-tech text-xs font-bold bg-transparent border-b border-dashed border-[#635645] focus:border-[#2b241b] focus:outline-none w-36 sm:w-44 uppercase" />
+        </div>
+
+        <!-- Viewport Overlay Quick Toggles -->
+        <div class="pointer-events-auto flex items-center gap-1.5">
+          <button id="btn-toggle-grid" class="draft-btn active px-2.5 py-1 rounded text-xs font-mono-tech font-bold draft-shadow-sm">
+            GRID: ON
+          </button>
+        </div>
+      </div>
+
+      <!-- Main Interactive Canvas Viewport -->
+      <div id="canvas-viewport" class="flex-1 w-full h-full">
+        <canvas id="main-canvas"></canvas>
+
+        <!-- ==================== MISSION OVERLAY (Brief / Launch & Orbit / Operations / Review) ==================== -->
+        <div id="mission-overlay" class="mo-wrap">
+          <div id="mission-overlay-body" class="mo-body"></div>
+        </div>
+
+        <!-- ==================== FLIGHT SIMULATION HUD OVERLAY (SIM MODE ONLY) ==================== -->
+        <div id="sim-hud" class="hidden absolute inset-0 pointer-events-none flex flex-col justify-between p-3 pt-14 z-10">
+
+          <!-- Top-Left Flight Telemetry & Propellant Gauges -->
+          <div class="flex flex-wrap justify-between items-start gap-2">
+            <div class="pointer-events-auto bg-[#f3ead6]/95 p-2.5 rounded draft-border draft-shadow-sm font-mono-tech text-xs space-y-1.5 min-w-[225px] max-w-[260px]">
+              <div class="flex justify-between border-b border-[#c9b99a] pb-1 font-bold text-[#2b241b]">
+                <span>FLIGHT TELEMETRY</span>
+                <span id="sim-status-badge" class="text-[#246b50]">PAD READY</span>
+              </div>
+
+              <!-- Live Mass & Fuel Bars -->
+              <div class="space-y-1 bg-[#ebe0c7] p-1.5 rounded border border-[#c9b99a]">
+                <div class="flex justify-between text-[11px]">
+                  <span class="text-[#635645]">CRAFT MASS:</span>
+                  <span id="sim-mass-live" class="font-bold">194.0 / 111.2 kg</span>
+                </div>
+
+                <!-- Liquid Fuel Gauge -->
+                <div>
+                  <div class="flex justify-between text-[10px]">
+                    <span class="font-bold text-[#255c85]">LIQUID FUEL:</span>
+                    <span id="sim-liq-text" class="font-bold">44.8 kg (100%)</span>
+                  </div>
+                  <div class="w-full h-2 bg-[#d4c7ad] rounded-xs border border-[#2b241b] overflow-hidden mt-0.5">
+                    <div id="sim-liq-bar" class="h-full bg-[#255c85] transition-all duration-75" style="width: 100%;"></div>
+                  </div>
+                </div>
+
+                <!-- Solid Fuel Gauge -->
+                <div>
+                  <div class="flex justify-between text-[10px]">
+                    <span class="font-bold text-[#b36b1d]">SOLID FUEL:</span>
+                    <span id="sim-sol-text" class="font-bold">38.0 kg (100%)</span>
+                  </div>
+                  <div class="w-full h-2 bg-[#d4c7ad] rounded-xs border border-[#2b241b] overflow-hidden mt-0.5">
+                    <div id="sim-sol-bar" class="h-full bg-[#c97b36] transition-all duration-75" style="width: 100%;"></div>
+                  </div>
+                </div>
+              </div>
+
+              <!-- Thruster Cutoff Warning Banner -->
+              <div id="sim-fuel-alert" class="hidden text-[10px] font-bold text-[#b83a2d] bg-[#f8e4e1] border border-[#b83a2d] px-1.5 py-1 rounded animate-fuel-warn">
+                <span data-ico="warning"></span> PROPELLANT EXHAUSTED
+              </div>
+
+              <!-- Kinematics Readouts -->
+              <div class="space-y-0.5 pt-0.5 text-[11px]">
+                <div class="flex justify-between">
+                  <span class="text-[#635645]">ALTITUDE:</span>
+                  <span id="sim-alt" class="font-bold">0.0 m</span>
+                </div>
+                <div class="flex justify-between">
+                  <span class="text-[#635645]">SPEED:</span>
+                  <span id="sim-vel" class="font-bold">0.0 m/s</span>
+                </div>
+                <div class="flex justify-between">
+                  <span class="text-[#635645]">VERT SPD:</span>
+                  <span id="sim-vspd" class="font-bold">0.0 m/s</span>
+                </div>
+                <div class="flex justify-between">
+                  <span class="text-[#635645]">PITCH / AoA:</span>
+                  <span id="sim-pitch" class="font-bold">0.0°</span>
+                </div>
+                <div class="flex justify-between">
+                  <span class="text-[#635645]">DYN PRESS (q):</span>
+                  <span id="sim-q" class="font-bold">0 Pa</span>
+                </div>
+              </div>
+            </div>
+
+            <!-- Top-Right Flight Controls: Wind Tunnel Tether, Stage Arming, Refuel, Reset -->
+            <div class="pointer-events-auto bg-[#f3ead6]/95 p-2 rounded draft-border draft-shadow-sm flex flex-col gap-1.5">
+              <button id="btn-sim-windtunnel" class="draft-btn px-2.5 py-1 rounded font-mono-tech text-xs font-bold" title="Tether craft in wind tunnel airflow to inspect FBD vectors">
+                WIND TUNNEL TETHER: OFF
+              </button>
+              <div class="flex gap-1">
+                <button id="btn-sim-arm-liq" class="draft-btn active flex-1 px-2 py-1 rounded font-mono-tech text-[10px] font-bold" title="Toggle Liquid Engines">
+                  LIQ ENG: ON
+                </button>
+                <button id="btn-sim-arm-sol" class="draft-btn active flex-1 px-2 py-1 rounded font-mono-tech text-[10px] font-bold" title="Toggle Solid Boosters">
+                  SOL BST: ON
+                </button>
+              </div>
+              <div class="flex gap-1">
+                <button id="btn-sim-stage" class="draft-btn-primary flex-1 px-2 py-1 rounded font-mono-tech text-[11px] font-bold" title="Drop the bottom stage (G)"><span data-ico="stage"></span> STAGE [G]</button>
+                <button id="btn-sim-warp" class="draft-btn px-2 py-1 rounded font-mono-tech text-[11px] font-bold" title="Time warp"><span data-ico="warp"></span> 1×</button>
+                <button id="btn-sim-sas" class="draft-btn active px-2 py-1 rounded font-mono-tech text-[11px] font-bold" title="Autopilot pitch-hold (like real launch guidance)">SAS ON</button>
+              </div>
+              <div id="sim-stage-readout" class="font-mono-tech text-[10px] text-[#635645] text-center">STAGE 1</div>
+              <div class="flex gap-1">
+                <button id="btn-sim-refuel" class="draft-btn-emerald flex-1 px-2 py-1 rounded font-mono-tech text-[11px] font-bold">
+                  <span data-ico="fuel"></span> REFUEL
+                </button>
+                <button id="btn-sim-reset" class="draft-btn flex-1 px-2 py-1 rounded font-mono-tech text-[11px] font-bold">
+                  ↺ PAD RESET
+                </button>
+              </div>
+            </div>
+          </div>
+
+          <!-- Bottom Flight Controls (Throttle, Pitch Gimbal, Ignition) -->
+          <div class="pointer-events-auto self-center w-full max-w-2xl bg-[#ebe0c7]/95 p-2.5 sm:p-3 rounded-lg draft-border draft-shadow flex flex-col sm:flex-row items-center justify-between gap-2.5">
+            <!-- Throttle Control -->
+            <div class="flex items-center gap-2 w-full sm:w-auto flex-1">
+              <span class="font-mono-tech text-xs font-bold whitespace-nowrap">THROTTLE:</span>
+              <input id="sim-throttle-slider" type="range" min="0" max="100" value="0" class="flex-1" />
+              <span id="sim-throttle-val" class="font-mono-tech text-xs font-bold w-10 text-right">0%</span>
+            </div>
+
+            <!-- Action & Gimbal Touch Buttons -->
+            <div class="flex items-center gap-1.5 w-full sm:w-auto justify-center">
+              <button id="btn-pitch-left" class="draft-btn px-2.5 py-2 rounded font-mono-tech text-xs font-bold select-none" title="Pitch Left (A / Left Arrow)">
+                ↺ PITCH L [A]
+              </button>
+              <button id="btn-sim-launch" class="draft-btn-primary px-3.5 py-2 rounded font-mono-tech text-xs font-bold uppercase tracking-wide draft-shadow-sm">
+                <span data-ico="fire"></span> IGNITION [SPACE]
+              </button>
+              <button id="btn-pitch-right" class="draft-btn px-2.5 py-2 rounded font-mono-tech text-xs font-bold select-none" title="Pitch Right (D / Right Arrow)">
+                PITCH R [D] ↻
+              </button>
+            </div>
+          </div>
+        </div>
+
+        <!-- ==================== SEPARATE MINIMIZABLE "APPLIED FORCES & FBD" TAB ==================== -->
+        <div id="fbd-floating-tab" class="absolute bottom-3 right-3 z-20 w-[calc(100%-1.5rem)] sm:max-w-[375px] transition-all">
+
+          <!-- MINIMIZED COMPACT PILL BAR (SHOWN WHEN MINIMIZED) -->
+          <div id="fbd-minimized-bar" class="hidden bg-[#ebe0c7]/95 backdrop-blur-xs rounded-md draft-border draft-shadow px-2.5 py-1.5 flex items-center justify-between gap-2.5 cursor-pointer" title="Click to expand Applied Forces & Free Body Diagram">
+            <div class="flex items-center gap-2 min-w-0">
+              <span class="w-2.5 h-2.5 rounded-full bg-[#246b50] shrink-0"></span>
+              <span class="font-mono-tech text-[11px] font-bold uppercase whitespace-nowrap">APPLIED FORCES &amp; FBD</span>
+              <span class="hidden sm:inline font-mono-tech text-[10px] text-[#635645] whitespace-nowrap">
+                W:<strong id="min-w" class="text-[#b83a2d]">0N</strong> •
+                T:<strong id="min-t" class="text-[#246b50]">0N</strong> •
+                D:<strong id="min-d" class="text-[#b36b1d]">0N</strong> •
+                Ff:<strong id="min-ff" class="text-[#6b3fa0]">0N</strong>
+              </span>
+            </div>
+            <button id="btn-fbd-expand" type="button" class="draft-btn px-2 py-0.5 rounded font-mono-tech text-[11px] font-bold shrink-0">
+              + EXPAND
+            </button>
+          </div>
+
+          <!-- EXPANDED FULL FREE BODY DIAGRAM & FORCES INSPECTOR -->
+          <div id="fbd-expanded-card" class="bg-[#f3ead6]/97 backdrop-blur-xs rounded-lg draft-border draft-shadow overflow-hidden flex flex-col max-h-[78vh]">
+            <!-- Tab Title Bar with Minimize Button -->
+            <div class="bg-[#2b241b] text-[#f3ead6] px-3 py-1.5 flex items-center justify-between gap-2">
+              <div class="flex items-center gap-2">
+                <span class="w-2 h-2 rounded-full bg-[#e0b93b]"></span>
+                <span class="font-mono-tech text-xs font-bold uppercase tracking-wide">Applied Forces &amp; FBD</span>
+              </div>
+              <button id="btn-fbd-minimize" class="bg-[#ebe0c7] text-[#2b241b] hover:bg-[#dcd0b4] px-2 py-0.5 rounded font-mono-tech text-[11px] font-bold" title="Minimize FBD Panel to Compact Bar">
+                — MINIMIZE
+              </button>
+            </div>
+
+            <!-- Scrollable Body inside FBD Tab -->
+            <div class="p-2.5 overflow-y-auto space-y-2.5 text-xs">
+
+              <!-- Dedicated Free Body Diagram Viewport Canvas -->
+              <div class="bg-[#ebe0c7] rounded border-[1.5px] border-[#2b241b] p-1.5 relative">
+                <div class="flex justify-between items-center font-mono-tech text-[10px] text-[#635645] mb-1 px-0.5">
+                  <span>FREE BODY DIAGRAM (LIVE)</span>
+                  <span id="fbd-twr-badge" class="font-bold text-[#246b50]">TWR: 0.00</span>
+                </div>
+                <canvas id="fbd-diagram-canvas" class="w-full h-[195px] rounded border border-[#c9b99a] bg-[#f3ead6]"></canvas>
+                <!-- Compact Legend Bar under FBD Canvas -->
+                <div class="grid grid-cols-3 gap-1 mt-1.5 font-mono-tech text-[10px]">
+                  <div class="flex items-center gap-1"><span class="font-bold text-[#b83a2d]">↓ W</span> Weight</div>
+                  <div class="flex items-center gap-1"><span class="font-bold text-[#246b50]">↑ T</span> Thrust</div>
+                  <div class="flex items-center gap-1"><span class="font-bold text-[#b36b1d]">↘ D</span> Drag</div>
+                  <div class="flex items-center gap-1"><span class="font-bold text-[#6b3fa0]">↙ Ff</span> Skin fric.</div>
+                  <div class="flex items-center gap-1"><span class="font-bold text-[#255c85]">↗ L</span> Lift</div>
+                  <div class="flex items-center gap-1"><span class="inline-block w-2 h-2 rounded-full bg-[#e8b931] border border-[#2b241b]"></span> CoM</div>
+                </div>
+              </div>
+
+              <!-- Live Applied Forces Table (Newtons) -->
+              <div class="grid grid-cols-2 gap-1.5 font-mono-tech text-[11px]">
+                <div class="bg-[#ebe0c7] p-1.5 rounded border border-[#c9b99a]">
+                  <div class="text-[10px] text-[#635645]">WEIGHT (W = m·g)</div>
+                  <div id="fbd-val-weight" class="font-bold text-[#b83a2d]">0.0 N</div>
+                </div>
+                <div class="bg-[#ebe0c7] p-1.5 rounded border border-[#c9b99a]">
+                  <div class="text-[10px] text-[#635645]">ACTIVE THRUST (T)</div>
+                  <div id="fbd-val-thrust" class="font-bold text-[#246b50]">0.0 N</div>
+                </div>
+                <div class="bg-[#ebe0c7] p-1.5 rounded border border-[#c9b99a]">
+                  <div class="text-[10px] text-[#635645]">AERO DRAG (D)</div>
+                  <div id="fbd-val-drag" class="font-bold text-[#b36b1d]">0.0 N</div>
+                </div>
+                <div class="bg-[#ebe0c7] p-1.5 rounded border border-[#c9b99a]">
+                  <div class="text-[10px] text-[#635645]">SKIN FRICTION (Ff)</div>
+                  <div id="fbd-val-friction" class="font-bold text-[#6b3fa0]">0.0 N</div>
+                </div>
+                <div class="bg-[#ebe0c7] p-1.5 rounded border border-[#c9b99a]">
+                  <div class="text-[10px] text-[#635645]">AERO LIFT (L)</div>
+                  <div id="fbd-val-lift" class="font-bold text-[#255c85]">0.0 N</div>
+                </div>
+                <div class="bg-[#ebe0c7] p-1.5 rounded border border-[#c9b99a]">
+                  <div class="text-[10px] text-[#635645]">CENTER OF MASS</div>
+                  <div id="fbd-val-com" class="font-bold text-[#2b241b]">--, --</div>
+                </div>
+              </div>
+
+              <!-- Material Surface Friction Breakdown -->
+              <div class="bg-[#ebe0c7] p-2 rounded border border-[#c9b99a] font-mono-tech text-[10px]">
+                <div class="flex justify-between items-center border-b border-[#c9b99a] pb-1 mb-1">
+                  <span class="font-bold text-[#2b241b]">SURFACE FRICTION BY MATERIAL</span>
+                  <span id="fbd-val-mu" class="font-bold text-[#6b3fa0]">μ_eff = 0.00</span>
+                </div>
+                <div id="fbd-friction-breakdown" class="space-y-0.5 max-h-24 overflow-y-auto">
+                  <!-- Populated dynamically with exterior material pixels & friction N -->
+                </div>
+              </div>
+
+              <!-- Build-Mode Test Sliders (Test Fuel Load & Test Airspeed) -->
+              <div id="fbd-build-test-controls" class="bg-[#e4d6b9] p-2 rounded border border-[#2b241b] space-y-2">
+                <div class="flex justify-between items-center font-mono-tech text-[10px] font-bold">
+                  <span>BUILD BENCH TEST CONDITIONS</span>
+                  <button id="btn-fbd-refuel" class="draft-btn-emerald px-1.5 py-0.5 rounded text-[10px]">Refuel 100%</button>
+                </div>
+
+                <div>
+                  <div class="flex justify-between font-mono-tech text-[10px] mb-0.5">
+                    <span>TEST FUEL LOAD (STAGE 1):</span>
+                    <span id="fbd-test-fuel-label" class="font-bold text-[#255c85]">100%</span>
+                  </div>
+                  <input id="slider-test-fuel" type="range" min="0" max="100" value="100" class="w-full" />
+                </div>
+
+                <div>
+                  <div class="flex justify-between font-mono-tech text-[10px] mb-0.5">
+                    <span>TEST AIRSPEED (DRAG / FRICTION):</span>
+                    <span id="fbd-test-speed-label" class="font-bold text-[#b36b1d]">65 m/s</span>
+                  </div>
+                  <input id="slider-test-speed" type="range" min="0" max="250" value="65" class="w-full" />
+                </div>
+              </div>
+
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Bottom Status Bar (Build Mode Coordinates & Active Tool Readout) -->
+      <footer id="build-status-bar" class="bg-[#ebe0c7] border-t-[1.5px] border-[#2b241b] px-3 py-1.5 flex flex-wrap items-center justify-between gap-2 font-mono-tech text-[11px]">
+        <div class="flex items-center gap-3">
+          <span>CURSOR: <strong id="status-coords" class="text-[#2b241b]">X: --, Y: --</strong></span>
+          <span class="hidden sm:inline text-[#c9b99a]">|</span>
+          <span class="hidden sm:inline">CELL: <strong id="status-cell-info" class="text-[#635645]">Empty Parchment</strong></span>
+        </div>
+        <div class="flex items-center gap-3">
+          <span>MATERIAL: <strong id="status-active-mat" class="text-[#255c85]">Carbon Nosecone</strong></span>
+          <span class="text-[#c9b99a]">|</span>
+          <span>PIXELS: <strong id="status-pixel-count">0</strong></span>
+        </div>
+      </footer>
+    </section>
+
+    <!-- ==================== RIGHT DOCK: FUNCTIONAL MATERIALS & PROPELLANT TANKS ==================== -->
+    <aside id="panel-materials" class="w-full lg:w-80 bg-[#ebe0c7] border-t-2 lg:border-t-0 lg:border-l-2 border-[#2b241b] p-3 overflow-y-auto flex flex-col gap-3 shrink-0">
+
+      <!-- Section 0: LIVE MISSION BUDGETS (computed from the drawing) -->
+      <section id="budget-dock" class="bg-[#f3ead6] rounded-md p-2.5 draft-border draft-shadow-sm"></section>
+
+      <!-- Section 1: Propellant & Mass Summary Card -->
+      <section class="bg-[#f3ead6] rounded-md p-2.5 draft-border draft-shadow-sm">
+        <div class="flex items-center justify-between mb-1.5">
+          <h2 class="text-xs font-bold uppercase tracking-wider flex items-center gap-1.5">
+            <span class="w-2 h-2 rounded-full bg-[#255c85]"></span>
+            Stage 1 Propellant
+          </h2>
+          <span id="dock-thruster-status" class="font-mono-tech text-[10px] font-bold px-1.5 py-0.5 rounded bg-[#246b50] text-[#f3ead6]">
+            FUELED
+          </span>
+        </div>
+
+        <div class="grid grid-cols-2 gap-1.5 font-mono-tech text-[11px] mb-2">
+          <div class="bg-[#ebe0c7] p-1.5 rounded border border-[#c9b99a]">
+            <div class="text-[10px] text-[#635645]">CURRENT MASS</div>
+            <div id="dock-mass-cur" class="font-bold text-sm">194.0 kg</div>
+          </div>
+          <div class="bg-[#ebe0c7] p-1.5 rounded border border-[#c9b99a]">
+            <div class="text-[10px] text-[#635645]">DRY MASS (EMPTY)</div>
+            <div id="dock-mass-dry" class="font-bold text-sm text-[#635645]">111.2 kg</div>
+          </div>
+        </div>
+
+        <!-- Liquid & Solid Fuel Progress Bars -->
+        <div class="space-y-1.5 font-mono-tech text-[10px]">
+          <div class="bg-[#ebe0c7] p-1.5 rounded border border-[#c9b99a]">
+            <div class="flex justify-between">
+              <span class="font-bold text-[#255c85]">LIQUID FUEL (For Liquid Thrusters)</span>
+              <span id="dock-liq-val" class="font-bold">44.8 kg (100%)</span>
+            </div>
+            <div class="w-full h-2 bg-[#d4c7ad] rounded-xs border border-[#2b241b] overflow-hidden mt-1">
+              <div id="dock-liq-bar" class="h-full bg-[#255c85]" style="width: 100%;"></div>
+            </div>
+            <div id="dock-liq-engine-note" class="mt-1 text-[10px] text-[#246b50] font-semibold">
+              Liquid Thrusters Ready
+            </div>
+          </div>
+
+          <div class="bg-[#ebe0c7] p-1.5 rounded border border-[#c9b99a]">
+            <div class="flex justify-between">
+              <span class="font-bold text-[#b36b1d]">SOLID FUEL (For Solid Boosters)</span>
+              <span id="dock-sol-val" class="font-bold">38.0 kg (100%)</span>
+            </div>
+            <div class="w-full h-2 bg-[#d4c7ad] rounded-xs border border-[#2b241b] overflow-hidden mt-1">
+              <div id="dock-sol-bar" class="h-full bg-[#c97b36]" style="width: 100%;"></div>
+            </div>
+            <div id="dock-sol-engine-note" class="mt-1 text-[10px] text-[#246b50] font-semibold">
+              Solid Boosters Ready
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- Section 2: 8 Functional Materials Palette -->
+      <section class="bg-[#f3ead6] rounded-md p-2.5 draft-border draft-shadow-sm">
+        <div class="flex items-center justify-between mb-2">
+          <h2 class="text-xs font-bold uppercase tracking-wider flex items-center gap-1.5">
+            <span class="w-2 h-2 rounded-full bg-[#b83a2d]"></span>
+            Materials &amp; Subsystems
+          </h2>
+          <!-- Custom Color Picker bound to active material class -->
+          <label class="flex items-center gap-1.5 cursor-pointer bg-[#e4d6b9] px-2 py-0.5 rounded border border-[#2b241b]" title="Custom Shading Color for Active Material">
+            <span class="font-mono-tech text-[10px] font-bold">TINT:</span>
+            <input id="input-custom-color" type="color" value="#2b2b2b" class="w-4 h-4 p-0 border-0 bg-transparent cursor-pointer" />
+          </label>
+        </div>
+
+        <div id="materials-list" class="space-y-1.5">
+          <!-- Populated dynamically with all 8 functional material classes & swatches -->
+        </div>
+      </section>
+    </aside>
+  </main>
+
+  <!-- ==================== TOAST NOTIFICATION BANNER ==================== -->
+  <div id="toast-container" class="fixed bottom-4 left-4 z-50 flex flex-col gap-2 pointer-events-none"></div>
+
+  <!-- ==================== INLINE CONFIRMATION MODAL ==================== -->
+  <div id="custom-modal" class="hidden fixed inset-0 z-50 bg-[#2b241b]/50 backdrop-blur-xs flex items-center justify-center p-4">
+    <div class="bg-[#f3ead6] rounded-lg max-w-md w-full p-4 draft-border draft-shadow">
+      <h3 id="modal-title" class="text-base font-bold uppercase tracking-wide mb-1">Confirm Action</h3>
+      <p id="modal-message" class="text-xs text-[#635645] mb-4 leading-relaxed"></p>
+      <div class="flex justify-end gap-2">
+        <button id="modal-cancel" class="draft-btn px-3 py-1.5 rounded text-xs font-bold">Cancel</button>
+        <button id="modal-confirm" class="draft-btn-primary px-3 py-1.5 rounded text-xs font-bold">Confirm</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ==================== INFO MODAL (Help / Sources) ==================== -->
+  <div id="info-modal" class="hidden fixed inset-0 z-50 bg-[#2b241b]/50 backdrop-blur-xs flex items-center justify-center p-4">
+    <div class="bg-[#f3ead6] rounded-lg max-w-2xl w-full p-4 draft-border draft-shadow">
+      <div class="flex items-center justify-between mb-2">
+        <h3 id="info-modal-title" class="text-base font-bold uppercase tracking-wide">Info</h3>
+        <button id="info-modal-close" class="draft-btn px-2.5 py-1 rounded text-xs font-bold">Close</button>
+      </div>
+      <div id="info-modal-body" class="text-[#2b241b]"></div>
+    </div>
+  </div>
+
+  <!-- ==================== APPLICATION LOGIC ==================== -->
+  <script src="js/app.js"></script>
+  <script src="js/enhancements.js"></script>
+</body>
+</html>
