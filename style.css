@@ -1,0 +1,393 @@
+:root {
+  --parchment-light: #f6efe0;
+  --parchment-mid: #efe5cd;
+  --parchment-dark: #dfd1b2;
+  --parchment-border: #8c7b60;
+  --ink-dark: #4b4237;
+  --ink-faint: rgba(95, 84, 70, 0.42);
+  --vector-blue: #8cc5e3;
+  --vector-blue-light: #d6f0ff;
+  --create-brass: #d4a348;
+  --create-andesite: #6b6e70;
+}
+
+* {
+  box-sizing: border-box;
+  user-select: none;
+  -webkit-user-select: none;
+}
+
+body {
+  margin: 0;
+  padding: 0;
+  overflow: hidden;
+  font-family: 'VT323', monospace;
+  background-color: #4f7932;
+  /* Minecraft grass/sky outdoor workbench backdrop matching screenshot */
+  background-image:
+    linear-gradient(180deg, #6894dc 0%, #8eb4f0 44%, #4f7932 44.2%, #44692b 100%);
+  height: 100vh;
+  width: 100vw;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+}
+
+/* Pixelated outdoor backdrop details */
+.mc-backdrop-clouds {
+  position: fixed;
+  inset: 0;
+  pointer-events: none;
+  z-index: 0;
+  background-image:
+    radial-gradient(ellipse at 18% 12%, rgba(255,255,255,0.65) 0%, rgba(255,255,255,0.65) 45%, transparent 46%),
+    radial-gradient(ellipse at 82% 16%, rgba(255,255,255,0.55) 0%, rgba(255,255,255,0.55) 40%, transparent 41%),
+    linear-gradient(90deg, rgba(0,0,0,0.06) 50%, transparent 50%),
+    linear-gradient(rgba(0,0,0,0.06) 50%, transparent 50%);
+  background-size: 280px 90px, 340px 110px, 32px 32px, 32px 32px;
+  background-position: 0 0, 100% 0, 0 44vh, 0 44vh;
+}
+
+.pixel-font {
+  font-family: 'Press Start 2P', monospace;
+}
+
+.vt-font {
+  font-family: 'VT323', monospace;
+}
+
+/* Book / Parchment Outer Wrapper */
+.notebook-frame {
+  position: relative;
+  z-index: 10;
+  width: min(96vw, 1180px);
+  height: min(84vh, 740px);
+  display: flex;
+  align-items: stretch;
+  filter: drop-shadow(0 16px 28px rgba(0, 0, 0, 0.45));
+}
+
+/* Left folded notebook spine pages */
+.book-spine-left {
+  width: 18px;
+  height: 62%;
+  margin-top: 12px;
+  background: linear-gradient(90deg, #d7ccb2 0%, #ebe2cb 55%, #cfc2a5 100%);
+  border: 3px solid #6f624d;
+  border-right: none;
+  box-shadow: inset 3px 0 0 rgba(255,255,255,0.4);
+  flex-shrink: 0;
+}
+
+/* Main Parchment Sheet */
+.parchment-sheet {
+  position: relative;
+  flex: 1;
+  background-color: var(--parchment-light);
+  border: 4px solid #7d6f58;
+  box-shadow:
+    inset 0 0 0 3px #dcd0b4,
+    inset 0 0 45px rgba(154, 134, 98, 0.25);
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+}
+
+/* Right yellow sticky bookmark tab matching screenshot */
+.book-tab-right {
+  width: 18px;
+  height: 56%;
+  margin-top: 26px;
+  background: linear-gradient(180deg, #faf29d 0%, #ede074 85%, #d6c556 100%);
+  border: 3px solid #8c7b48;
+  border-left: none;
+  box-shadow: inset -3px 0 0 rgba(255,255,255,0.5);
+  flex-shrink: 0;
+  cursor: pointer;
+  transition: width 0.15s ease;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.book-tab-right:hover {
+  width: 24px;
+}
+
+/* Canvas crisp pixel rendering */
+canvas#blueprintCanvas {
+  display: block;
+  width: 100%;
+  height: 100%;
+  image-rendering: pixelated;
+  image-rendering: crisp-edges;
+  cursor: crosshair;
+}
+
+/* Parchment Square Overlay Buttons (Top Left) */
+.parchment-btn {
+  width: 44px;
+  height: 44px;
+  background: rgba(248, 242, 228, 0.92);
+  border: 2px solid #c5b699;
+  box-shadow:
+    inset 2px 2px 0 rgba(255, 255, 255, 0.8),
+    inset -2px -2px 0 rgba(168, 152, 124, 0.45),
+    0 2px 4px rgba(75, 66, 55, 0.14);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  transition: transform 0.08s ease, background-color 0.12s ease, border-color 0.12s ease;
+  position: relative;
+}
+
+.parchment-btn:hover {
+  background: #fffaf0;
+  border-color: #8c7b60;
+  transform: translateY(-1px);
+}
+
+.parchment-btn.active {
+  background: #e5f3fb;
+  border-color: #5b9bd5;
+  box-shadow:
+    inset 2px 2px 0 rgba(91, 155, 213, 0.28),
+    0 0 0 2px rgba(140, 197, 227, 0.45);
+}
+
+/* Tooltip styling */
+.parchment-btn .btn-tooltip {
+  position: absolute;
+  left: 54px;
+  top: 50%;
+  transform: translateY(-50%);
+  background: #2b241d;
+  color: #f6efe0;
+  border: 2px solid #a88746;
+  padding: 4px 10px;
+  font-size: 16px;
+  white-space: nowrap;
+  pointer-events: none;
+  opacity: 0;
+  transition: opacity 0.12s ease;
+  z-index: 40;
+  box-shadow: 0 4px 10px rgba(0,0,0,0.35);
+}
+
+.parchment-btn:hover .btn-tooltip {
+  opacity: 1;
+}
+
+/* Top-right Circular Compass Dial */
+.compass-dial {
+  width: 78px;
+  height: 78px;
+  border-radius: 9999px;
+  background: rgba(248, 242, 228, 0.92);
+  border: 2px solid #cbbda2;
+  box-shadow:
+    inset 0 0 0 3px rgba(255,255,255,0.65),
+    0 2px 6px rgba(75, 66, 55, 0.15);
+  position: relative;
+}
+
+.dial-btn {
+  position: absolute;
+  background: transparent;
+  border: none;
+  padding: 3px;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 4px;
+  transition: transform 0.1s, background 0.1s;
+}
+
+.dial-btn:hover {
+  background: rgba(140, 123, 96, 0.18);
+  transform: scale(1.12);
+}
+
+.dial-btn:active {
+  transform: scale(0.95);
+}
+
+/* Create Mod Brass & Andesite Dock */
+.create-dock {
+  position: relative;
+  z-index: 20;
+  margin-top: 10px;
+  background: linear-gradient(180deg, #5d5f61 0%, #444648 100%);
+  border: 3px solid #2b2c2e;
+  box-shadow:
+    inset 0 2px 0 #828588,
+    inset 0 -3px 0 #2f3032,
+    0 8px 20px rgba(0, 0, 0, 0.45);
+  padding: 6px 10px;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  max-width: 96vw;
+}
+
+/* Brass Rivets on Dock Corners */
+.create-dock::before,
+.create-dock::after {
+  content: '';
+  position: absolute;
+  top: 4px;
+  width: 6px;
+  height: 6px;
+  background: #d4a348;
+  border: 1px solid #6e4e16;
+}
+.create-dock::before { left: 4px; }
+.create-dock::after { right: 4px; }
+
+.slot-btn {
+  width: 48px;
+  height: 48px;
+  background: #353739;
+  border: 2px solid #222325;
+  box-shadow: inset 2px 2px 0 #262729, inset -2px -2px 0 #55585b;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  position: relative;
+  transition: transform 0.08s ease;
+}
+
+.slot-btn:hover {
+  background: #434649;
+  transform: translateY(-2px);
+}
+
+.slot-btn.selected {
+  background: #4e4637;
+  border: 2px solid #f0c265;
+  box-shadow:
+    inset 0 0 8px rgba(240, 194, 101, 0.4),
+    0 0 0 2px #8f651d;
+}
+
+.slot-label {
+  font-size: 11px;
+  line-height: 1;
+  color: #e2dfd7;
+  margin-top: 2px;
+  text-shadow: 1px 1px 0 #1b1c1d;
+  letter-spacing: 0.2px;
+}
+
+.dock-action-btn {
+  height: 44px;
+  padding: 0 12px;
+  background: linear-gradient(180deg, #d8aa50 0%, #b3832d 100%);
+  border: 2px solid #4d350c;
+  box-shadow: inset 0 2px 0 #f5d384, inset 0 -2px 0 #825b16;
+  color: #261904;
+  font-family: 'VT323', monospace;
+  font-size: 19px;
+  font-weight: bold;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  transition: filter 0.1s, transform 0.08s;
+}
+
+.dock-action-btn:hover {
+  filter: brightness(1.08);
+  transform: translateY(-1px);
+}
+
+.dock-action-btn.sim-active {
+  background: linear-gradient(180deg, #62c46e 0%, #3a8f45 100%);
+  border-color: #17421d;
+  box-shadow: inset 0 2px 0 #9cf0a6, inset 0 -2px 0 #235e2b;
+  color: #0d2911;
+}
+
+.dock-toggle-btn {
+  height: 44px;
+  padding: 0 10px;
+  background: #3c3e40;
+  border: 2px solid #222325;
+  color: #d6d3cb;
+  font-family: 'VT323', monospace;
+  font-size: 17px;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  gap: 5px;
+}
+
+.dock-toggle-btn.active {
+  background: #2f4f63;
+  border-color: #7cc4eb;
+  color: #e3f5ff;
+}
+
+/* Telemetry Floating Parchment Card */
+.telemetry-panel {
+  position: absolute;
+  top: 16px;
+  left: 72px;
+  width: 268px;
+  background: rgba(246, 239, 224, 0.96);
+  border: 3px solid #7d6f58;
+  box-shadow: 0 6px 18px rgba(58, 49, 36, 0.25);
+  padding: 10px 12px;
+  color: #42392f;
+  z-index: 30;
+  font-size: 17px;
+}
+
+/* Toast Message Box */
+.toast-banner {
+  position: absolute;
+  bottom: 14px;
+  left: 50%;
+  transform: translateX(-50%);
+  background: rgba(43, 36, 29, 0.92);
+  color: #f6efe0;
+  border: 2px solid #c99b42;
+  padding: 4px 14px;
+  font-size: 17px;
+  z-index: 35;
+  pointer-events: none;
+  opacity: 0;
+  transition: opacity 0.2s ease;
+}
+
+.toast-banner.show {
+  opacity: 1;
+}
+
+@media (max-width: 768px) {
+  .notebook-frame {
+    height: 76vh;
+    width: 98vw;
+  }
+  .book-spine-left, .book-tab-right {
+    width: 10px;
+  }
+  .slot-btn {
+    width: 42px;
+    height: 42px;
+  }
+  .slot-label {
+    display: none;
+  }
+  .telemetry-panel {
+    width: 225px;
+    font-size: 15px;
+  }
+}

@@ -1,0 +1,207 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Create Aeronautics — Contraption Diagram &amp; Airship Builder</title>
+
+  <script src="https://cdn.tailwindcss.com"></script>
+
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Press+Start+2P&family=VT323&display=swap" rel="stylesheet">
+
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <div class="mc-backdrop-clouds"></div>
+
+  <!-- Main Create Aeronautics Notebook Blueprint -->
+  <div class="notebook-frame">
+    <div class="book-spine-left" title="Contraption Field Manual"></div>
+
+    <div class="parchment-sheet" id="parchmentContainer">
+      <canvas id="blueprintCanvas" width="684" height="668"></canvas>
+
+      <!-- Top-Left Toggle Buttons -->
+      <div class="absolute top-3.5 left-3.5 flex flex-col gap-2.5 z-20">
+        <button id="btnSpecs" class="parchment-btn" aria-label="Contraption Specs">
+          <svg width="24" height="24" viewBox="0 0 16 16" shape-rendering="crispEdges">
+            <rect x="2" y="3" width="2" height="2" fill="#8f8679"></rect>
+            <rect x="5" y="3" width="8" height="2" fill="#8f8679"></rect>
+            <rect x="2" y="6" width="2" height="2" fill="#8f8679"></rect>
+            <rect x="5" y="6" width="9" height="2" fill="#8f8679"></rect>
+            <rect x="2" y="9" width="2" height="2" fill="#8f8679"></rect>
+            <rect x="5" y="9" width="6" height="2" fill="#8f8679"></rect>
+            <rect x="2" y="12" width="2" height="2" fill="#8f8679"></rect>
+            <rect x="5" y="12" width="8" height="2" fill="#8f8679"></rect>
+          </svg>
+          <span class="btn-tooltip">Contraption Specs &amp; Telemetry [1]</span>
+        </button>
+
+        <button id="btnVectors" class="parchment-btn active" aria-label="Toggle Lift &amp; Thrust Vectors">
+          <svg width="24" height="24" viewBox="0 0 16 16" shape-rendering="crispEdges">
+            <rect x="3" y="4" width="8" height="2" fill="#8f8679"></rect>
+            <rect x="9" y="2" width="2" height="2" fill="#8f8679"></rect>
+            <rect x="11" y="4" width="2" height="2" fill="#8f8679"></rect>
+            <rect x="9" y="6" width="2" height="2" fill="#8f8679"></rect>
+            <rect x="3" y="10" width="8" height="2" fill="#8f8679"></rect>
+            <rect x="9" y="8" width="2" height="2" fill="#8f8679"></rect>
+            <rect x="11" y="10" width="2" height="2" fill="#8f8679"></rect>
+            <rect x="9" y="12" width="2" height="2" fill="#8f8679"></rect>
+          </svg>
+          <span class="btn-tooltip">Lift &amp; Thrust Vectors [2]</span>
+        </button>
+
+        <button id="btnCoM" class="parchment-btn" aria-label="Toggle Center of Mass and Lift">
+          <svg width="24" height="24" viewBox="0 0 16 16" shape-rendering="crispEdges">
+            <rect x="5" y="2" width="3" height="6" fill="#c2b8a8"></rect>
+            <rect x="3" y="4" width="2" height="4" fill="#c2b8a8"></rect>
+            <rect x="8" y="2" width="3" height="6" fill="#7c7468"></rect>
+            <rect x="11" y="4" width="2" height="4" fill="#7c7468"></rect>
+            <rect x="3" y="8" width="5" height="4" fill="#7c7468"></rect>
+            <rect x="5" y="12" width="3" height="2" fill="#7c7468"></rect>
+            <rect x="8" y="8" width="5" height="4" fill="#c2b8a8"></rect>
+            <rect x="8" y="12" width="3" height="2" fill="#c2b8a8"></rect>
+          </svg>
+          <span class="btn-tooltip">Center of Mass &amp; Lift Markers [3]</span>
+        </button>
+
+        <button id="btnMass" class="parchment-btn" aria-label="Mass and Stress Heatmap">
+          <svg width="24" height="24" viewBox="0 0 16 16" shape-rendering="crispEdges">
+            <rect x="10" y="2" width="2" height="4" fill="#8f8679"></rect>
+            <rect x="12" y="3" width="2" height="3" fill="#8f8679"></rect>
+            <rect x="9" y="5" width="2" height="2" fill="#8f8679"></rect>
+            <rect x="7" y="7" width="2" height="2" fill="#8f8679"></rect>
+            <rect x="5" y="9" width="2" height="2" fill="#8f8679"></rect>
+            <rect x="2" y="10" width="3" height="3" fill="#8f8679"></rect>
+            <rect x="4" y="11" width="2" height="3" fill="#8f8679"></rect>
+          </svg>
+          <span class="btn-tooltip">Mass Heatmap &amp; Structural Stress [4]</span>
+        </button>
+      </div>
+
+      <!-- Top-Right Compass Dial -->
+      <div class="absolute top-3.5 right-3.5 z-20 flex flex-col items-end gap-1.5">
+        <div class="compass-dial" title="Pan Contraption &amp; Switch Blueprint Projection">
+          <div style="position:absolute; top:50%; left:50%; width:6px; height:6px; transform:translate(-50%,-50%); background:#a89c88;"></div>
+
+          <button class="dial-btn" id="panUp" style="top:4px; left:50%; transform:translateX(-50%);" title="Nudge Up">
+            <svg width="14" height="14" viewBox="0 0 10 10" shape-rendering="crispEdges">
+              <polygon points="5,1 9,6 1,6" fill="#8c8273"></polygon>
+            </svg>
+          </button>
+
+          <button class="dial-btn" id="panDown" style="bottom:4px; left:50%; transform:translateX(-50%);" title="Nudge Down">
+            <svg width="14" height="14" viewBox="0 0 10 10" shape-rendering="crispEdges">
+              <polygon points="5,9 9,4 1,4" fill="#8c8273"></polygon>
+            </svg>
+          </button>
+
+          <button class="dial-btn" id="panLeft" style="left:4px; top:50%; transform:translateY(-50%);" title="Nudge Left">
+            <svg width="14" height="14" viewBox="0 0 10 10" shape-rendering="crispEdges">
+              <polygon points="1,5 6,1 6,9" fill="#8c8273"></polygon>
+            </svg>
+          </button>
+
+          <button class="dial-btn" id="panRight" style="right:4px; top:50%; transform:translateY(-50%);" title="Nudge Right">
+            <svg width="14" height="14" viewBox="0 0 10 10" shape-rendering="crispEdges">
+              <polygon points="9,5 4,1 4,9" fill="#8c8273"></polygon>
+            </svg>
+          </button>
+
+          <button class="dial-btn" id="rotLeft" style="top:9px; left:9px;" title="Cycle Projection View (Front / Side / Top)">
+            <svg width="18" height="18" viewBox="0 0 16 16" shape-rendering="crispEdges">
+              <path d="M12 4 C8 4, 5 7, 5 11" stroke="#8c8273" stroke-width="2" fill="none"></path>
+              <polygon points="5,13 2,9 8,9" fill="#8c8273"></polygon>
+            </svg>
+          </button>
+
+          <button class="dial-btn" id="rotRight" style="top:9px; right:9px;" title="Cycle Projection View (Front / Side / Top)">
+            <svg width="18" height="18" viewBox="0 0 16 16" shape-rendering="crispEdges">
+              <path d="M4 4 C8 4, 11 7, 11 11" stroke="#8c8273" stroke-width="2" fill="none"></path>
+              <polygon points="11,13 8,9 14,9" fill="#8c8273"></polygon>
+            </svg>
+          </button>
+        </div>
+
+        <div id="viewModeBadge" class="px-2 py-0.5 bg-[#f6efe0]/90 border border-[#b8a88a] text-[#5e5344] text-sm tracking-wide">
+          VIEW: FRONT ELEVATION
+        </div>
+      </div>
+
+      <!-- Telemetry Panel -->
+      <div id="telemetryPanel" class="telemetry-panel hidden">
+        <div class="flex items-center justify-between border-b-2 border-[#c7b89b] pb-1 mb-2">
+          <span class="pixel-font text-[10px] text-[#4b4237]">CONTRAPTION SPECS</span>
+          <button id="closeTelemetry" class="text-[#7d6f58] hover:text-black font-bold px-1">✕</button>
+        </div>
+        <div class="space-y-1.5 leading-tight">
+          <div class="flex justify-between"><span>Total Blocks:</span><span id="statBlocks" class="font-bold">0</span></div>
+          <div class="flex justify-between"><span>Total Mass (Σm):</span><span id="statMass" class="font-bold">0 kg</span></div>
+          <div class="flex justify-between"><span>Lift Force (L):</span><span id="statLift" class="font-bold text-[#2b78a8]">0 kN</span></div>
+          <div class="flex justify-between"><span>Propeller Thrust (T):</span><span id="statThrust" class="font-bold text-[#2b78a8]">0 kN</span></div>
+          <div class="flex justify-between"><span>Lift-to-Weight Ratio:</span><span id="statLWR" class="font-bold">0.00</span></div>
+          <div class="flex justify-between"><span>CoM / CoL Balance:</span><span id="statBalance" class="font-bold">EMPTY</span></div>
+          <div class="flex justify-between"><span>Helm / Pilot Seat:</span><span id="statHelm" class="font-bold">MISSING</span></div>
+        </div>
+        <div class="mt-2 pt-1.5 border-t border-[#c7b89b] text-sm text-[#6b5e4c]">
+          Tip: Keep CoM (yellow/black) &amp; CoL (blue) aligned horizontally to avoid pitch spin!
+        </div>
+      </div>
+
+      <!-- Flight HUD -->
+      <div id="flightHud" class="hidden absolute top-3.5 left-1/2 -translate-x-1/2 z-30 bg-[#2a2b2d] border-2 border-[#d4a348] text-[#f6efe0] px-4 py-1.5 flex items-center gap-5 shadow-lg">
+        <div class="flex flex-col">
+          <span class="text-xs text-[#d4a348]">THROTTLE [W/S]</span>
+          <span id="hudThrottle" class="text-lg font-bold leading-none">75%</span>
+        </div>
+        <div class="flex flex-col">
+          <span class="text-xs text-[#d4a348]">ALTITUDE</span>
+          <span id="hudAlt" class="text-lg font-bold leading-none">120 m</span>
+        </div>
+        <div class="flex flex-col">
+          <span class="text-xs text-[#d4a348]">PITCH [A/D]</span>
+          <span id="hudPitch" class="text-lg font-bold leading-none">0.0°</span>
+        </div>
+        <div class="flex flex-col">
+          <span class="text-xs text-[#d4a348]">STATUS</span>
+          <span id="hudStatus" class="text-lg font-bold leading-none text-[#7ce889]">AIRBORNE</span>
+        </div>
+      </div>
+
+      <div id="coordIndicator" class="absolute bottom-2 right-3 text-[#7a6d59]/80 text-base pointer-events-none">GRID: (0, 0) | L-CLICK: PLACE • R-CLICK: ERASE</div>
+
+      <div id="toastBanner" class="toast-banner"></div>
+    </div>
+
+    <div class="book-tab-right" id="tabPreset" title="Cycle Contraption Presets"></div>
+  </div>
+
+  <!-- Bottom Block Palette & Action Dock -->
+  <div class="create-dock" id="blockDock">
+    <!-- Block slots are injected by initPaletteUI() in main.js -->
+    <div id="paletteSlots" class="flex items-center gap-1.5 flex-wrap justify-center"></div>
+
+    <div class="h-8 w-[2px] bg-[#2a2b2d] mx-1 hidden sm:block"></div>
+
+    <button id="btnMirror" class="dock-toggle-btn active" title="Toggle X-Axis Mirror Symmetry">
+      <span>⇄</span><span>MIRROR</span>
+    </button>
+
+    <button id="btnPreset" class="dock-toggle-btn" title="Load Aerospace Contraption Presets">
+      <span>📜</span><span>PRESET</span>
+    </button>
+
+    <button id="btnClear" class="dock-toggle-btn" title="Clear Blueprint Grid">
+      <span>✖</span><span>CLEAR</span>
+    </button>
+
+    <button id="btnSimulate" class="dock-action-btn" title="Test Contraption Physics on Blueprint">
+      <span>▶</span><span id="simBtnText">TEST FLIGHT</span>
+    </button>
+  </div>
+
+  <script src="main.js" defer></script>
+</body>
+</html>
