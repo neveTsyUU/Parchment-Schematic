@@ -11,6 +11,7 @@
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Press+Start+2P&family=VT323&display=swap" rel="stylesheet">
 
+  <!-- CHANGED: leading "/" so Vite finds it from the project root -->
   <link rel="stylesheet" href="/style.css">
 </head>
 <body>
@@ -78,6 +79,19 @@
             <rect x="4" y="11" width="2" height="3" fill="#8f8679"></rect>
           </svg>
           <span class="btn-tooltip">Mass Heatmap &amp; Structural Stress [4]</span>
+        </button>
+
+        <button id="btnFBD" class="parchment-btn active" aria-label="Toggle Free Body Diagram">
+          <svg width="24" height="24" viewBox="0 0 16 16" shape-rendering="crispEdges">
+            <rect x="7" y="1" width="2" height="1" fill="#8f8679"></rect>
+            <rect x="6" y="2" width="4" height="1" fill="#8f8679"></rect>
+            <rect x="7" y="3" width="2" height="3" fill="#8f8679"></rect>
+            <rect x="4" y="6" width="8" height="4" fill="#8f8679"></rect>
+            <rect x="7" y="10" width="2" height="3" fill="#8f8679"></rect>
+            <rect x="6" y="13" width="4" height="1" fill="#8f8679"></rect>
+            <rect x="7" y="14" width="2" height="1" fill="#8f8679"></rect>
+          </svg>
+          <span class="btn-tooltip">Free Body Diagram [5]</span>
         </button>
       </div>
 
@@ -180,7 +194,7 @@
 
   <!-- Bottom Block Palette & Action Dock -->
   <div class="create-dock" id="blockDock">
-    <!-- Block slots are injected by initPaletteUI() in main.js -->
+    <!-- Block slots are injected by initPaletteUI() in src/main.js -->
     <div id="paletteSlots" class="flex items-center gap-1.5 flex-wrap justify-center"></div>
 
     <div class="h-8 w-[2px] bg-[#2a2b2d] mx-1 hidden sm:block"></div>
@@ -202,6 +216,7 @@
     </button>
   </div>
 
+  <!-- CHANGED: module script pointing at src/main.js (no "defer" needed) -->
   <script type="module" src="/src/main.js"></script>
 </body>
 </html>

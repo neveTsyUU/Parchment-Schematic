@@ -10,8 +10,11 @@ import {
   stepContraption,
   constrainContraption,
   getBodyState,
+  getForces,
+  estimateForces,
   destroyContraption
 } from './physics.js';
+import { drawFreeBodyDiagram } from './fbd.js';
 
 const canvas = document.getElementById('blueprintCanvas');
 const ctx = canvas.getContext('2d');
@@ -125,6 +128,7 @@ const state = {
   showVectors: true,
   showCoM: false,
   showMassHeatmap: false,
+  showFBD: true,
   viewMode: 0, // 0 = Front Elevation, 1 = Side Profile, 2 = Top-Down Plan
   panOffsetX: 0,
   panOffsetY: 0,
@@ -147,17 +151,6 @@ const state = {
 };
 
 const VIEW_NAMES = ['FRONT ELEVATION', 'SIDE PROFILE', 'TOP-DOWN BLUEPRINT'];
-
-// Handwritten Pixel Physics Equations scattered in the parchment background (matching screenshot)
-const BACKGROUND_NOTES = [
-  { xRatio: 0.34, yRatio: 0.25, text: 'f(x)', scale: 2 },
-  { xRatio: 0.41, yRatio: 0.23, text: '∫ ρ·v² dx', scale: 1.5 },
-  { xRatio: 0.49, yRatio: 0.28, text: 'M = r × F', scale: 1.7 },
-  { xRatio: 0.71, yRatio: 0.35, text: 'dL/dt = τ', scale: 1.6 },
-  { xRatio: 0.76, yRatio: 0.56, text: '∑mr = R', scale: 2 },
-  { xRatio: 0.73, yRatio: 0.81, text: 'E = ½mv²', scale: 2 },
-  { xRatio: 0.21, yRatio: 0.76, text: 'C_L = 2π·α', scale: 1.5 }
-];
 
 /**
  * Load Preset Contraptions
@@ -514,27 +507,6 @@ function updateTelemetry() {
 }
 
 /**
- * Draw Faint Pixel Handwritten Physics Notes on Parchment
- */
-function drawParchmentEquations(w, h) {
-  ctx.save();
-  ctx.fillStyle = 'rgba(95, 84, 70, 0.48)';
-  ctx.font = 'bold 18px "Press Start 2P", monospace';
-  ctx.textBaseline = 'middle';
-
-  BACKGROUND_NOTES.forEach(note => {
-    const nx = Math.round(w * note.xRatio);
-    const ny = Math.round(h * note.yRatio);
-    ctx.save();
-    ctx.translate(nx, ny);
-    ctx.scale(note.scale * 0.55, note.scale * 0.55);
-    ctx.fillText(note.text, 0, 0);
-    ctx.restore();
-  });
-  ctx.restore();
-}
-
-/**
  * Draw Upward Pixel Lift Vector Arrows (Matching the tall/short blue arrows in screenshot)
  */
 function drawLiftArrow(cx, baseY, heightPx, pulseOffset = 0) {
@@ -663,9 +635,6 @@ function render(timestamp) {
     ctx.stroke();
   }
 
-  // 3. Draw Handwritten Equations in Background
-  drawParchmentEquations(w, h);
-
   // 4. Mirror Symmetry Center Line (in Build Mode)
   if (!state.simulating && state.mirrorMode) {
     const mirrorX = baseOriginX + (CENTER_COL + 0.5) * cellSize;
@@ -766,6 +735,30 @@ function render(timestamp) {
   }
 
   ctx.restore();
+
+  // 7b. Free Body Diagram, drawn on the blueprint and anchored at the center of mass.
+  // Forces are vertical in the world, so the arrows stay vertical even when the craft tilts.
+  if (state.showFBD && stats.blockCount > 0) {
+    const pivotX = baseOriginX + (CENTER_COL + 0.5) * cellSize;
+    const pivotY = baseOriginY + (CENTER_ROW + 0.5) * cellSize;
+    const offX = stats.comX * cellSize;
+    const offY = stats.comY * cellSize;
+
+    let anchorX, anchorY, live = null;
+    if (state.simulating) {
+      const cos = Math.cos(state.sim.angle);
+      const sin = Math.sin(state.sim.angle);
+      anchorX = pivotX + state.sim.x + offX * cos - offY * sin;
+      anchorY = pivotY + state.sim.y + offX * sin + offY * cos;
+      live = getForces();
+    } else {
+      anchorX = pivotX + state.panOffsetX * cellSize + offX;
+      anchorY = pivotY + state.panOffsetY * cellSize + offY;
+    }
+
+    const forces = live || estimateForces(state.grid, BLOCK_TYPES, state.sim.throttle);
+    drawFreeBodyDiagram(ctx, anchorX, anchorY, cellSize, forces);
+  }
 
   // 8. Hover Ghost Preview in Build Mode
   if (!state.simulating && state.hoverCell) {
@@ -987,6 +980,14 @@ btnMass.addEventListener('click', () => {
   showToast(state.showMassHeatmap ? 'Mass & Structural Stress Heatmap: ON' : 'Mass & Structural Stress Heatmap: OFF');
 });
 
+// Free Body Diagram toggle (button 5) - the diagram itself is drawn on the main canvas
+const btnFBD = document.getElementById('btnFBD');
+btnFBD.addEventListener('click', () => {
+  state.showFBD = !state.showFBD;
+  btnFBD.classList.toggle('active', state.showFBD);
+  showToast(state.showFBD ? 'Free Body Diagram: ON' : 'Free Body Diagram: OFF');
+});
+
 // Top-Right Compass Dial Controls
 document.getElementById('panUp').addEventListener('click', () => { state.panOffsetY -= 1; });
 document.getElementById('panDown').addEventListener('click', () => { state.panOffsetY += 1; });
@@ -1070,6 +1071,7 @@ window.addEventListener('keydown', (e) => {
     if (e.key === '2') btnVectors.click();
     if (e.key === '3') btnCoM.click();
     if (e.key === '4') btnMass.click();
+    if (e.key === '5') btnFBD.click();
     if (e.key.toLowerCase() === 'm') btnMirror.click();
   }
 });
