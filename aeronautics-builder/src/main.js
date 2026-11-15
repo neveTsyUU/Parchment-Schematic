@@ -1,7 +1,17 @@
 /**
  * CREATE AERONAUTICS — CONTRAPTION DIAGRAM & AIRSHIP BUILDER
  * High-craft pixel-art blueprint editor & 2D aerodynamics simulator.
+ * Flight test physics powered by Rapier 2D (see physics.js).
  */
+
+import {
+  initPhysics,
+  createContraption,
+  stepContraption,
+  constrainContraption,
+  getBodyState,
+  destroyContraption
+} from './physics.js';
 
 const canvas = document.getElementById('blueprintCanvas');
 const ctx = canvas.getContext('2d');
@@ -124,14 +134,13 @@ const state = {
   presetIndex: 0,
   animTime: 0,
   // Flight Simulation State
+  // x / y / angle are now READ from the Rapier body each frame (see updateFlightSimulation).
+  // x / y are in pixels, angle in radians.
   simulating: false,
   sim: {
     x: 0,
     y: 0,
-    vx: 0,
-    vy: 0,
-    angle: 0, // radians
-    angularVel: 0,
+    angle: 0,
     throttle: 0.72,
     keys: {}
   }
@@ -674,7 +683,7 @@ function render(timestamp) {
   // Update Flight Simulation Physics if active
   const stats = calculatePhysics();
   if (state.simulating) {
-    updateFlightSimulation(stats);
+    updateFlightSimulation(stats, cellSize); // CHANGED: cellSize is needed to convert meters -> pixels
   }
 
   // Apply Contraption Transform (Pan offset in editor OR Flight position/pitch in simulation)
@@ -797,9 +806,11 @@ function render(timestamp) {
 }
 
 /**
- * Live 2D Physics Flight Test right on the Parchment Blueprint
+ * Live flight test, now driven by Rapier 2D.
+ * This function only handles input and reads the result back;
+ * the actual forces and integration live in physics.js.
  */
-function updateFlightSimulation(stats) {
+function updateFlightSimulation(stats, cellSize) {
   const sim = state.sim;
   const dt = 1 / 60;
 
@@ -816,46 +827,34 @@ function updateFlightSimulation(stats) {
   if (sim.keys['KeyA'] || sim.keys['ArrowLeft']) pilotTorque -= 1.6;
   if (sim.keys['KeyD'] || sim.keys['ArrowRight']) pilotTorque += 1.6;
 
-  // Aerodynamic balance torque: if CoL is offset from CoM, craft naturally pitches!
-  const imbalanceTorque = (stats.colX - stats.comX) * 0.45 * sim.throttle;
-  const damping = -sim.angularVel * 2.4;
-  const restoring = -Math.sin(sim.angle) * 0.8;
+  // Apply forces + step the Rapier world
+  stepContraption(state.grid, BLOCK_TYPES, CENTER_COL, CENTER_ROW, sim.throttle, pilotTorque);
 
-  sim.angularVel += (pilotTorque + imbalanceTorque + damping + restoring) * dt;
-  sim.angle += sim.angularVel * dt;
+  // Keep the craft on the parchment (limits converted from pixels to meters)
+  constrainContraption(240 / cellSize, 140 / cellSize);
 
-  // Vertical forces: Gravity vs Lift + Buoyancy
-  const gravity = 110;
-  const upwardAccel = (stats.lwr * sim.throttle) * 115;
-  const netAy = (gravity - upwardAccel) * Math.cos(sim.angle);
-  const netAx = Math.sin(sim.angle) * upwardAccel * 0.85;
-
-  sim.vy = (sim.vy + netAy * dt) * 0.96;
-  sim.vx = (sim.vx + netAx * dt) * 0.96;
-
-  sim.x += sim.vx * dt;
-  sim.y += sim.vy * dt;
-
-  // Keep within parchment bounds with gentle cushion
-  const maxX = 240;
-  const maxY = 140;
-  if (sim.x < -maxX) { sim.x = -maxX; sim.vx *= -0.4; }
-  if (sim.x > maxX) { sim.x = maxX; sim.vx *= -0.4; }
-  if (sim.y < -maxY) { sim.y = -maxY; sim.vy *= -0.4; }
-  if (sim.y > maxY) { sim.y = maxY; sim.vy *= -0.4; }
+  // Read the result back (meters -> pixels) for the renderer
+  const b = getBodyState();
+  sim.x = b.x * cellSize;
+  sim.y = b.y * cellSize;
+  sim.angle = b.angle;
 
   // Update Flight HUD
   document.getElementById('hudThrottle').textContent = `${Math.round(sim.throttle * 100)}%`;
   document.getElementById('hudAlt').textContent = `${Math.max(0, Math.round(120 - sim.y * 0.5))} m`;
   document.getElementById('hudPitch').textContent = `${(sim.angle * 57.3).toFixed(1)}°`;
 
+  // Status now comes from the real vertical velocity (+y is down)
   const statusEl = document.getElementById('hudStatus');
-  if (stats.lwr * sim.throttle >= 0.95) {
-    statusEl.textContent = 'CLIMBING / LEVEL';
+  if (b.vy < -0.3) {
+    statusEl.textContent = 'CLIMBING';
     statusEl.style.color = '#7ce889';
-  } else {
-    statusEl.textContent = 'DESCENDING (LOW LIFT)';
+  } else if (b.vy > 0.3) {
+    statusEl.textContent = 'DESCENDING';
     statusEl.style.color = '#f5b856';
+  } else {
+    statusEl.textContent = 'LEVEL';
+    statusEl.style.color = '#7ce889';
   }
 }
 
@@ -1045,15 +1044,18 @@ function toggleSimulation() {
   if (state.simulating) {
     state.sim.x = 0;
     state.sim.y = 0;
-    state.sim.vx = 0;
-    state.sim.vy = 0;
     state.sim.angle = 0;
-    state.sim.angularVel = 0;
     state.sim.throttle = 0.85;
     state.showVectors = true;
     btnVectors.classList.add('active');
+
+    // NEW: build the Rapier body from the current blueprint
+    createContraption(state.grid, BLOCK_TYPES, CENTER_COL, CENTER_ROW);
+
     showToast('Flight Test Active! Use [W/S] Throttle & [A/D] Pitch');
   } else {
+    // NEW: throw the Rapier body away when the test ends
+    destroyContraption();
     showToast('Returned to Blueprint Editor');
   }
 }
@@ -1088,9 +1090,14 @@ function showToast(msg) {
   }, 2400);
 }
 
-// Initialize App on Window Load
-window.onload = () => {
+// Initialize App.
+// CHANGED: window.onload is replaced by an async start() so we can wait for
+// Rapier's WASM to load before the first frame.
+async function start() {
+  await initPhysics();
   initPaletteUI();
   loadPreset(0); // Starts with exact contraption layout from screenshot
   requestAnimationFrame(render);
-};
+}
+
+start();
